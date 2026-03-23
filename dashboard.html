@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Fire Stats | لوحة المعلومات</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            font-family: 'Tahoma', 'Segoe UI', sans-serif;
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #ffd89b, #c7e9fb);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .search-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 28px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: flex-end;
+        }
+        .form-group > div {
+            flex: 1;
+            min-width: 150px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        select, input {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 12px;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 1rem;
+        }
+        button {
+            background: linear-gradient(135deg, #ff6a00, #ee0979);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover { transform: scale(1.02); }
+        .profile-card, .stats-card, .items-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 28px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 3px solid #ffd89b;
+            object-fit: cover;
+            background: #2c3e50;
+        }
+        .banner {
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 16px;
+            margin: 15px 0;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .info-item {
+            background: rgba(0,0,0,0.3);
+            padding: 12px;
+            border-radius: 16px;
+            text-align: center;
+        }
+        .info-item span:first-child {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            display: block;
+        }
+        .info-item span:last-child {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .items-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .item-card {
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            padding: 8px;
+            width: 100px;
+            text-align: center;
+        }
+        .item-card img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .no-image {
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #2c3e50;
+            border-radius: 8px;
+            font-size: 2rem;
+        }
+        .error { color: #ffbaba; background: rgba(255,0,0,0.2); padding: 15px; border-radius: 16px; }
+        .loading { text-align: center; padding: 30px; font-size: 1.2rem; }
+        @media (max-width: 600px) {
+            .form-group { flex-direction: column; align-items: stretch; }
+            .profile-header { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🔥 FF Stats Pro 🔥</h1>
+        <p>عرض إحصائيات ومعلومات لاعبي فري فاير بكل سهولة</p>
+    </div>
+
+    <div class="search-card">
+        <div class="form-group">
+            <div>
+                <label>🌍 السيرفر</label>
+                <select id="server">
+                    <option value="ME">الشرق الأوسط (ME)</option>
+                    <option value="IND">الهند (IND)</option>
+                    <option value="BR">البرازيل (BR)</option>
+                </select>
+            </div>
+            <div>
+                <label>🆔 UID</label>
+                <input type="text" id="uid" placeholder="أدخل UID اللاعب">
+            </div>
+            <div>
+                <button id="searchBtn">🔍 بحث</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="profileResult"></div>
+    <div id="itemsResult"></div>
+    <div id="craftlandResult"></div>
+</div>
+
+<script>
+    const API_BASE = window.location.origin; // نفس الخادم
+    let currentUid = null;
+    let currentRegion = null;
+
+    async function fetchAPI(endpoint, params) {
+        const url = new URL(`${API_BASE}${endpoint}`);
+        Object.keys(params).forEach(k => url.searchParams.append(k, params[k]));
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    }
+
+    function formatNumber(n) {
+        return n?.toLocaleString() || '0';
+    }
+
+    function formatDate(ts) {
+        if (!ts) return 'غير معروف';
+        const d = new Date(ts * 1000);
+        return d.toLocaleDateString('ar-EG');
+    }
+
+    async function loadProfile(server, uid) {
+        const container = document.getElementById('profileResult');
+        container.innerHTML = '<div class="loading">⏳ جاري تحميل الملف الشخصي...</div>';
+        try {
+            const data = await fetchAPI('/api/v1/account', { region: server, uid });
+            const basic = data.basicInfo || {};
+            const clan = data.clanBasicInfo || {};
+            const pet = data.petInfo || {};
+            const social = data.socialInfo || {};
+
+            const html = `
+                <div class="profile-card">
+                    <div class="profile-header">
+                        ${basic.avatarImageUrl ? `<img class="avatar" src="${basic.avatarImageUrl}" alt="Avatar">` : '<div class="avatar" style="background:#2c3e50; display:flex; align-items:center; justify-content:center;">👤</div>'}
+                        <div>
+                            <h2>👤 ${basic.nickname || 'غير معروف'}</h2>
+                            <div>🆔 ${basic.accountId || uid}</div>
+                        </div>
+                    </div>
+                    ${basic.bannerImageUrl ? `<img class="banner" src="${basic.bannerImageUrl}" alt="Banner">` : ''}
+                    <div class="info-grid">
+                        <div class="info-item"><span>⭐ المستوى</span><span>${basic.level || 0}</span></div>
+                        <div class="info-item"><span>🏆 رتبة BR</span><span>${basic.rank || 0}</span></div>
+                        <div class="info-item"><span>🎯 رتبة CS</span><span>${basic.csRank || 0}</span></div>
+                        <div class="info-item"><span>❤️ الإعجابات</span><span>${formatNumber(basic.liked)}</span></div>
+                        <div class="info-item"><span>📅 تاريخ الإنشاء</span><span>${formatDate(basic.createAt)}</span></div>
+                        <div class="info-item"><span>🕒 آخر دخول</span><span>${formatDate(basic.lastLoginAt)}</span></div>
+                    </div>
+                    ${clan.clanName ? `<div class="info-item"><span>🏅 الجيلد</span><span>${clan.clanName} (المستوى ${clan.clanLevel})</span></div>` : ''}
+                    ${pet.petName ? `<div class="info-item"><span>🐾 الحيوان الأليف</span><span>${pet.petName} (مستوى ${pet.level})</span></div>` : ''}
+                    <div class="info-item"><span>📢 الحالة</span><span>${social.socialHighlight || 'لا توجد'}</span></div>
+                </div>
+            `;
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = `<div class="error">⚠️ فشل تحميل الملف الشخصي: ${err.message}</div>`;
+        }
+    }
+
+    async function loadWishlist(server, uid) {
+        const container = document.getElementById('itemsResult');
+        container.innerHTML = '<div class="loading">⏳ جاري تحميل قائمة الرغبات...</div>';
+        try {
+            const data = await fetchAPI('/api/v1/wishlistitems', { region: server, uid });
+            const items = data.items || [];
+            if (!items.length) {
+                container.innerHTML = '<div class="profile-card">🎁 لا توجد عناصر في قائمة الرغبات</div>';
+                return;
+            }
+            const html = `
+                <div class="profile-card">
+                    <h3>🎁 قائمة الرغبات (${items.length})</h3>
+                    <div class="items-gallery">
+                        ${items.slice(0, 30).map(item => `
+                            <div class="item-card">
+                                ${item.imageUrl ? `<img src="${item.imageUrl}" alt="Item">` : '<div class="no-image">🔹</div>'}
+                                <span>${item.itemId}</span>
+                            </div>
+                        `).join('')}
+                        ${items.length > 30 ? `<div class="item-card">... و ${items.length-30} عنصر آخر</div>` : ''}
+                    </div>
+                </div>
+            `;
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = `<div class="error">⚠️ فشل تحميل قائمة الرغبات: ${err.message}</div>`;
+        }
+    }
+
+    async function loadCraftland(server, uid) {
+        const container = document.getElementById('craftlandResult');
+        container.innerHTML = '<div class="loading">⏳ جاري تحميل معلومات Craftland...</div>';
+        try {
+            const data = await fetchAPI('/api/v1/craftlandProfile', { region: server, uid });
+            const profile = data.profile || {};
+            const html = `
+                <div class="stats-card">
+                    <h3>🎨 Craftland</h3>
+                    <div class="info-grid">
+                        <div class="info-item"><span>✍️ الصانع</span><span>${profile.author_name || 'غير معروف'}</span></div>
+                        <div class="info-item"><span>🏆 الترتيب</span><span>${formatNumber(profile.craftland_rank)}</span></div>
+                        <div class="info-item"><span>🎮 إجمالي اللعب</span><span>${formatNumber(profile.total_plays)}</span></div>
+                        <div class="info-item"><span>👥 المشتركين</span><span>${formatNumber(profile.subscriptions_count)}</span></div>
+                        <div class="info-item"><span>🗺️ الخرائط المنشورة</span><span>${profile.maps_count || 0}</span></div>
+                    </div>
+                    ${profile.maps?.length ? `
+                        <details>
+                            <summary>📋 عرض الخرائط (${profile.maps.length})</summary>
+                            <div class="items-gallery">
+                                ${profile.maps.slice(0, 20).map(m => `<div class="item-card"><div class="no-image">🗺️</div><span>${m}</span></div>`).join('')}
+                                ${profile.maps.length > 20 ? `<div class="item-card">... و ${profile.maps.length-20} خريطة أخرى</div>` : ''}
+                            </div>
+                        </details>
+                    ` : ''}
+                </div>
+            `;
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = `<div class="error">⚠️ فشل تحميل Craftland: ${err.message}</div>`;
+        }
+    }
+
+    document.getElementById('searchBtn').addEventListener('click', async () => {
+        const server = document.getElementById('server').value;
+        const uid = document.getElementById('uid').value.trim();
+        if (!uid) {
+            alert('الرجاء إدخال UID');
+            return;
+        }
+        currentUid = uid;
+        currentRegion = server;
+        await loadProfile(server, uid);
+        await loadWishlist(server, uid);
+        await loadCraftland(server, uid);
+    });
+</script>
+</body>
+</html>
